@@ -1,0 +1,18 @@
+// copy into ~/.config/hum/themes/ and pick it with --theme gruber-darker or Ctrl+Y
+//
+// the file name is the theme name. a file named after a built-in replaces it.
+// base           built-in theme that fills every slot left out (default "red")
+// slots          accent, accent_strong, dim, ghost, highlight, bold
+// slot fields    .fg / .bg      "#rrggbb" or a 256-color index like "214"
+//                .bold .faint .italic .underline .reverse   true / false
+// a slot you set replaces the base's slot whole; .{} means plain text
+
+.{
+    .base = "red",
+    .accent = .{ .fg = "#ffdd33" },
+    .accent_strong = .{ .fg = "#ffdd33", .bold = true },
+    .dim = .{ .fg = "#7f7f7f" },
+    .ghost = .{ .fg = "#52494e" },
+    .highlight = .{ .fg = "#181818", .bg = "#ffdd33" },
+    .bold = .{ .bold = true },
+}

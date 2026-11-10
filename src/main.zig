@@ -52,7 +52,8 @@ pub fn main(init: std.process.Init) !void {
 
     const raw_args = try init.minimal.args.toSlice(arena);
 
-    var theme_name: []const u8 = resolveThemeName(arena, init.environ_map);
+    const themes = loadThemes(gpa, arena, io, init.environ_map);
+    var theme_name: []const u8 = resolveThemeName(arena, init.environ_map, themes);
     var args: std.ArrayList([:0]const u8) = .empty;
     try args.append(arena, raw_args[0]);
     var i: usize = 1;
@@ -60,28 +61,27 @@ pub fn main(init: std.process.Init) !void {
         const a = raw_args[i];
         if (std.mem.eql(u8, a, "--theme")) {
             if (i + 1 < raw_args.len) {
-                if (theme_mod.byName(raw_args[i + 1]) != null) theme_name = raw_args[i + 1];
+                if (theme_mod.find(themes, raw_args[i + 1]) != null) theme_name = raw_args[i + 1];
                 i += 1;
             }
             continue;
         }
         if (std.mem.startsWith(u8, a, "--theme=")) {
             const v = a["--theme=".len..];
-            if (theme_mod.byName(v) != null) theme_name = v;
+            if (theme_mod.find(themes, v) != null) theme_name = v;
             continue;
         }
         if (std.mem.eql(u8, a, "--themes")) {
-            try putStdout("themes: " ++ theme_mod.names ++ "\n");
+            try putStdout(try std.fmt.allocPrint(arena, "themes: {s}\n", .{theme_mod.joinNames(arena, themes)}));
             return;
         }
         try args.append(arena, a);
     }
 
-    const theme = theme_mod.byName(theme_name) orelse theme_mod.default;
-    const theme_idx = theme_mod.indexOf(theme_name) orelse 0;
+    const theme_idx = theme_mod.find(themes, theme_name) orelse 0;
 
     if (args.items.len < 2) {
-        try ui.run(gpa, arena, io, init.environ_map, theme, theme_idx);
+        try ui.run(gpa, arena, io, init.environ_map, themes, theme_idx);
         return;
     }
 
@@ -127,16 +127,23 @@ pub fn main(init: std.process.Init) !void {
     try cmdPlay(gpa, arena, io, args.items[1..]);
 }
 
-fn resolveThemeName(arena: std.mem.Allocator, env: *std.process.Environ.Map) []const u8 {
+fn loadThemes(gpa: std.mem.Allocator, arena: std.mem.Allocator, io: std.Io, env: *std.process.Environ.Map) []const theme_mod.Named {
+    const cfg = config.path(arena, env) catch return &theme_mod.all;
+    const base = std.fs.path.dirname(cfg) orelse return &theme_mod.all;
+    const dir = std.fmt.allocPrint(arena, "{s}/themes", .{base}) catch return &theme_mod.all;
+    return theme_mod.load(gpa, arena, io, dir);
+}
+
+fn resolveThemeName(arena: std.mem.Allocator, env: *std.process.Environ.Map, themes: []const theme_mod.Named) []const u8 {
     var name: []const u8 = "red";
     if (config.path(arena, env)) |p| {
         if (config.loadKey(arena, p, .theme)) |saved| {
-            if (theme_mod.byName(saved) != null) name = saved;
+            if (theme_mod.find(themes, saved) != null) name = saved;
         }
     } else |_| {}
     inline for (.{ "YTCLI_THEME", "HUM_THEME" }) |key| {
         if (env.get(key)) |e| {
-            if (theme_mod.byName(e) != null) name = e;
+            if (theme_mod.find(themes, e) != null) name = e;
         }
     }
     return name;
@@ -156,7 +163,7 @@ fn joinArgs(arena: std.mem.Allocator, words: []const [:0]const u8) ![]u8 {
 }
 
 fn printHelp() !void {
-    var buf: [1024]u8 = undefined;
+    var buf: [2048]u8 = undefined;
     const text = std.fmt.bufPrint(&buf,
         \\hum — terminal media player (local files + YouTube Music)
         \\
@@ -175,7 +182,7 @@ fn printHelp() !void {
         \\  hum -v, --version      print version
         \\
         \\options:
-        \\  --theme <name>           color theme ({s})
+        \\  --theme <name>           color theme (built-in: {s}; more via --themes)
         \\  --themes                 list available themes
         \\  HUM_THEME env            same as --theme
         \\  Ctrl+Y inside the TUI    cycle through themes live

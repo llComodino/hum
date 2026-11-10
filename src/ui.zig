@@ -134,6 +134,7 @@ const State = struct {
     config_path: []const u8 = "",
     theme: theme_mod.Theme = theme_mod.default,
     theme_idx: usize = 0,
+    themes: []const theme_mod.Named = &theme_mod.all,
 
     pl: ?*player.Player = null,
     queue: []api.Track = &.{},
@@ -192,9 +193,10 @@ pub fn run(
     arena: std.mem.Allocator,
     io: std.Io,
     env: *std.process.Environ.Map,
-    theme: theme_mod.Theme,
+    themes: []const theme_mod.Named,
     theme_idx: usize,
 ) !void {
+    const theme = themes[theme_idx].theme;
     const orig_termios = try enterRaw();
     defer restoreTty(orig_termios);
 
@@ -208,7 +210,7 @@ pub fn run(
         const sz = termSize();
         log.write("start: term {d}x{d} rows/cols", .{ sz.rows, sz.cols });
     }
-    var state: State = .{ .theme = theme, .theme_idx = theme_idx };
+    var state: State = .{ .theme = theme, .theme_idx = theme_idx, .themes = themes };
     const splash_off = blk: {
         const p = config.path(arena, env) catch break :blk false;
         const v = config.loadKey(arena, p, .splash) orelse break :blk false;
@@ -574,10 +576,10 @@ fn handleKey(
                 return true;
             },
             0x19 => {
-                state.theme_idx = (state.theme_idx + 1) % theme_mod.all.len;
-                state.theme = theme_mod.all[state.theme_idx].theme;
-                state.status = theme_mod.all[state.theme_idx].name;
-                saveSetting(arena, state, .theme, theme_mod.all[state.theme_idx].name);
+                state.theme_idx = (state.theme_idx + 1) % state.themes.len;
+                state.theme = state.themes[state.theme_idx].theme;
+                state.status = state.themes[state.theme_idx].name;
+                saveSetting(arena, state, .theme, state.themes[state.theme_idx].name);
                 return true;
             },
             else => {},

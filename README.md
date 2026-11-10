@@ -139,7 +139,7 @@ hum history               # past queries
 hum playlists             # saved playlists (add a name to print its tracks)
 hum --theme cyan          # red (default) | cyan | mono | dracula | nord | gruvbox
                           # tokyonight | catppuccin | matrix | rosepine | solarized
-hum --themes              # list themes
+hum --themes              # list themes, built-in and your own
 hum -h | -v
 ```
 
@@ -210,6 +210,7 @@ made an effort to use commands that felt fairly intuitive
 - `$XDG_DATA_HOME/hum/playlists` - saved playlists: `[name]` header, then one `target⇥title⇥artist⇥kind⇥source⇥duration` line per track (`target` is a video id, or a path for local files). tab-separated, editable by hand. files written by older versions still load.
 - `$XDG_CACHE_HOME/hum/library` - the local index. rebuildable. delete it and `hum library scan`. rows are reused when a file's mtime and size are unchanged, so a rescan only re-reads what actually changed.
 - `$XDG_CONFIG_HOME/hum/config` - `key=value` settings (theme, volume, `music_dir`, `visualizer`, `mouse=off`, `splash=off`).
+- `$XDG_CONFIG_HOME/hum/themes/*.zon` - your own themes; the file name is the theme name and it joins `--themes` and the `Ctrl+Y` cycle. slots `accent`, `accent_strong`, `dim`, `ghost`, `highlight`, `bold`, each `.{ .fg, .bg, .bold, .faint, .italic, .underline, .reverse }` with colors as `"#rrggbb"` or a 256-color index (`"214"`). slots you leave out come from `.base` (a built-in, `red` by default); a file named after a built-in replaces it. up to 64 files, 16KB each; a file that doesn't parse is skipped and noted in the log. see [`examples/themes/gruber-darker.zon`](examples/themes/gruber-darker.zon)
 - `$XDG_CONFIG_HOME/hum/visualizers/*.vis` - your own visualizers. header lines `name`, `fps` (1-30), `speed` (`fixed`/`level`), `color` (`level`/`dim`/`accent`/`strong`), then frames separated by `---` lines. up to 32 files, 64KB each; a file that doesn't parse is skipped and noted in the log
 - history is just newline delimited text - `grep`/`cat` it, or seed it so the TUI autocompletes your favorites from the first keystroke:
 ```sh
